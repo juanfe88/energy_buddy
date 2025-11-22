@@ -1024,6 +1024,20 @@ wheels = [
 ]
 
 [[package]]
+name = "langchain"
+version = "1.0.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "langchain-core" },
+    { name = "langgraph" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/da/7a/63c041d1ee74c505e30ec882889117baa08afce2264bcb4463929bac4e94/langchain-1.0.7.tar.gz", hash = "sha256:e3f8ad742b4cdc91d728f96bd70e4688bc11ffeca3bd160c5fe9937625d541b9", size = 465198, upload-time = "2025-11-14T20:52:21.813Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8e/4a/02c14af46fa79ce7b02a0f8af46f5905cc7e8b647a5f1a7c793c03ac5063/langchain-1.0.7-py3-none-any.whl", hash = "sha256:cf33b4d60d7a2ff7f0f313441628927853192cdbab9d6d8ce229909a868bbf12", size = 93738, upload-time = "2025-11-14T20:52:20.717Z" },
+]
+
+[[package]]
 name = "langchain-core"
 version = "1.0.5"
 source = { registry = "https://pypi.org/simple" }
@@ -2536,6 +2550,7 @@ dependencies = [
     { name = "fastapi", extra = ["standard"] },
     { name = "google-cloud-bigquery" },
     { name = "kaleido" },
+    { name = "langchain" },
     { name = "langchain-google-vertexai" },
     { name = "langgraph" },
     { name = "pillow" },
@@ -2552,6 +2567,7 @@ requires-dist = [
     { name = "fastapi", extras = ["standard"], specifier = ">=0.121.2" },
     { name = "google-cloud-bigquery", specifier = ">=3.38.0" },
     { name = "kaleido", specifier = ">=0.2.1" },
+    { name = "langchain", specifier = ">=1.0.7" },
     { name = "langchain-google-vertexai", specifier = ">=2.0.11" },
     { name = "langgraph", specifier = ">=1.0.3" },
     { name = "pillow", specifier = ">=11.1.0" },

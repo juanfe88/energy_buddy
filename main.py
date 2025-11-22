@@ -10,14 +10,16 @@ from typing import Dict, Any
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from fastapi.staticfiles import StaticFiles
+from langchain_core.messages import HumanMessage
 
-from src.twilio_energy_monitor.config import settings
-from src.twilio_energy_monitor.models import AgentState
-from src.twilio_energy_monitor.utils.twilio_utils import (
+from src.config import settings
+from src.models import AgentState
+from src.utils.twilio_utils import (
     verify_twilio_signature,
     extract_message_data
 )
-from src.twilio_energy_monitor.workflow import invoke_workflow
+from src.workflow import invoke_workflow
 
 # Configure logging
 logging.basicConfig(
@@ -41,6 +43,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/health")
@@ -127,12 +132,14 @@ async def twilio_webhook(request: Request) -> Response:
             "extracted_date": None,
             "extracted_measurement": None,
             "bigquery_success": False,
-            "response_message": ""
+            "response_message": "",
+            "conversation": [HumanMessage(content=message_data["message_body"])],
+            "base_url": f"{scheme}://{host}"
         }
         
         # Invoke LangGraph workflow
         # Note: This runs synchronously but should complete within Twilio's timeout
-        final_state = invoke_workflow(initial_state)
+        final_state = invoke_workflow(initial_state, message_data["from_number"])
         
         logger.info(
             f"Workflow completed for message {message_data['message_sid']}: "

@@ -8,6 +8,7 @@ writing to BigQuery, and generating responses.
 import logging
 from typing import Literal
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import InMemorySaver
 
 from .models import AgentState
 from .nodes.parser import parse_message
@@ -139,19 +140,35 @@ def create_workflow() -> StateGraph:
     
     # Compile the graph
     logger.info("Compiling LangGraph workflow")
-    compiled_workflow = workflow.compile()
+    checkpointer = InMemorySaver()
+    compiled_workflow = workflow.compile(checkpointer=checkpointer)
     
     return compiled_workflow
 
+# Global variable to store the compiled workflow
+_compiled_workflow = None
 
-def invoke_workflow(initial_state: AgentState) -> AgentState:
+def get_workflow() -> StateGraph:
+    """Get or create the compiled workflow singleton.
+    
+    Returns:
+        The compiled StateGraph with checkpointer
+    """
+    global _compiled_workflow
+    if _compiled_workflow is None:
+        _compiled_workflow = create_workflow()
+    return _compiled_workflow
+
+
+def invoke_workflow(initial_state: AgentState, user_phone: str) -> AgentState:
     """Invoke the workflow with initial state.
     
-    This is the main entry point for executing the workflow. It creates
-    the workflow graph and invokes it with the provided initial state.
+    This is the main entry point for executing the workflow. It uses
+    the singleton workflow graph and invokes it with the provided initial state.
     
     Args:
         initial_state: Initial agent state containing message data from Twilio webhook
+        user_phone: The user's phone number, used as the thread_id for checkpointing
         
     Returns:
         Final agent state after workflow execution
@@ -160,13 +177,17 @@ def invoke_workflow(initial_state: AgentState) -> AgentState:
         - 5.1: Export function to invoke workflow with initial state
         - 5.4: Maintain state across workflow steps
     """
-    logger.info(f"Invoking workflow with message_sid={initial_state.get('message_sid')}")
+    logger.info(f"Invoking workflow with message_sid={initial_state.get('message_sid')} for user {user_phone}")
     
-    # Create workflow
-    workflow = create_workflow()
+    # Get workflow singleton
+    workflow = get_workflow()
     
     # Invoke workflow with initial state
-    final_state = workflow.invoke(initial_state)
+    # Use user_phone as thread_id to maintain conversation history per user
+    final_state = workflow.invoke(
+        initial_state, 
+        config={"configurable": {"thread_id": user_phone}}
+    )
     
     logger.info(f"Workflow completed. Final state: bigquery_success={final_state.get('bigquery_success')}")
     

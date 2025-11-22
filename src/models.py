@@ -1,6 +1,9 @@
 """Data models for the Twilio Energy Monitor application."""
 
-from typing import List, Optional, TypedDict
+from typing import List, Optional, TypedDict,Annotated
+from operator import add
+from langchain_core.messages import BaseMessage
+
 
 
 class AgentState(TypedDict):
@@ -22,4 +25,6 @@ class AgentState(TypedDict):
     bigquery_success: bool
     query_response: Optional[str]  # Response from interactive query agent
     plot_path: Optional[str]  # Path to generated plot file
+    conversation: Annotated[List[BaseMessage],add]
     response_message: str
+    base_url: str

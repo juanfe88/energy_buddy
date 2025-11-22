@@ -16,9 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 def _get_plot_output_dir() -> Path:
-    """Get plot output directory from settings with fallback to /tmp."""
-    output_dir = getattr(settings, 'plot_output_dir', '/tmp')
-    return Path(output_dir)
+    """Get plot output directory (static/plots)."""
+    return Path("static/plots")
 
 
 @tool
@@ -125,14 +124,18 @@ def generate_plot(days: int = 30) -> str:
                 font=dict(size=18, family='Arial, sans-serif')
             ),
             xaxis=dict(
-                title='Date',
-                titlefont=dict(size=14),
+                title=dict(
+                    text='Date',
+                    font=dict(size=14)
+                ),
                 showgrid=True,
                 gridcolor='rgba(128, 128, 128, 0.2)'
             ),
             yaxis=dict(
-                title='Energy Consumption (kWh)',
-                titlefont=dict(size=14),
+                title=dict(
+                    text='Energy Consumption (kWh)',
+                    font=dict(size=14)
+                ),
                 showgrid=True,
                 gridcolor='rgba(128, 128, 128, 0.2)'
             ),

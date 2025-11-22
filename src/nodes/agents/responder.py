@@ -185,14 +185,16 @@ def generate_response(state: AgentState) -> dict:
         # If a plot was generated, prepare it for MMS
         if plot_path and os.path.exists(plot_path):
             logger.info(f"Plot file found at {plot_path}, will send as MMS")
-            # For Twilio MMS, we need a publicly accessible URL
-            # For local files, Twilio can't access them directly
-            # In production, you'd upload to cloud storage and use that URL
-            # For now, we'll log a warning and send text only
-            logger.warning(f"Plot file at {plot_path} cannot be sent via MMS without public URL")
-            logger.warning("In production, upload plot to cloud storage (e.g., GCS) and use public URL")
-            # media_url would be set to the public URL here
-            # media_url = upload_to_cloud_storage(plot_path)
+            
+            base_url = state.get("base_url")
+            if base_url:
+                # Construct public URL using the base URL (ngrok)
+                # plot_path is like "static/plots/filename.png"
+                filename = os.path.basename(plot_path)
+                media_url = f"{base_url}/static/plots/{filename}"
+                logger.info(f"Generated media URL: {media_url}")
+            else:
+                logger.warning("No base_url in state, cannot construct media URL for plot")
         
         # Send query response
         if from_number:
@@ -201,14 +203,6 @@ def generate_response(state: AgentState) -> dict:
                 logger.warning("Failed to send query response, but continuing workflow")
         else:
             logger.warning("No from_number in state, cannot send response")
-        
-        # Clean up temporary plot file
-        if plot_path and os.path.exists(plot_path):
-            try:
-                os.remove(plot_path)
-                logger.info(f"Cleaned up temporary plot file: {plot_path}")
-            except Exception as e:
-                logger.error(f"Failed to clean up plot file {plot_path}: {e}")
         
         return {"response_message": message}
     
