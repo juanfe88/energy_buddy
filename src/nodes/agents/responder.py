@@ -1,4 +1,4 @@
-"""Response generator sub-agent for sending confirmation messages via Twilio."""
+"""Response generator node for sending confirmation messages via Twilio."""
 
 import logging
 import os
@@ -13,41 +13,13 @@ from ...utils.retry import exponential_backoff_retry
 logger = logging.getLogger(__name__)
 
 
-def format_success_message(date: str, measurement: float) -> str:
-    """Format success confirmation message.
-    
-    Args:
-        date: Date of the energy reading
-        measurement: Measurement value
-        
-    Returns:
-        Formatted success message string
-        
-    Requirements:
-        - 4.1: Format confirmation message with date and measurement
-    """
-    return f"✅ Energy reading registered: {measurement} kWh on {date}"
-
-
-def format_error_message() -> str:
-    """Format error message.
-    
-    Returns:
-        Formatted error message string
-        
-    Requirements:
-        - 4.3: Send error message explaining failure reason
-    """
-    return "❌ Failed to register reading. Please try again."
-
-
 @exponential_backoff_retry(
     max_retries=2,
     initial_delay=1.0,
     exceptions=(TwilioRestException,)
 )
-def send_whatsapp_with_retry(client: Client, from_whatsapp: str, to_whatsapp: str, message: str, media_url: str = None):
-    """Send WhatsApp message with retry logic for transient errors.
+def _send_twilio_message(client: Client, from_whatsapp: str, to_whatsapp: str, message: str, media_url: str = None):
+    """Internal function to send WhatsApp message with retry logic for transient errors.
     
     Args:
         client: Twilio client instance
@@ -87,7 +59,7 @@ def send_whatsapp_with_retry(client: Client, from_whatsapp: str, to_whatsapp: st
             raise
 
 
-def send_whatsapp_response(to_number: str, message: str, media_url: str = None) -> bool:
+def send_whatsapp_message(to_number: str, message: str, media_url: str = None) -> bool:
     """Send WhatsApp response via Twilio API with optional media attachment.
     
     Implements retry logic for transient errors and comprehensive error handling.
@@ -132,7 +104,7 @@ def send_whatsapp_response(to_number: str, message: str, media_url: str = None) 
         else:
             logger.info(f"Sending WhatsApp message to {to_whatsapp}")
         
-        message_obj = send_whatsapp_with_retry(client, from_whatsapp, to_whatsapp, message, media_url)
+        message_obj = _send_twilio_message(client, from_whatsapp, to_whatsapp, message, media_url)
         
         logger.info(f"WhatsApp message sent successfully. SID: {message_obj.sid}")
         return True
@@ -177,14 +149,16 @@ def generate_response(state: AgentState) -> dict:
     query_response = state.get("query_response")
     plot_path = state.get("plot_path")
     
-    # Check if this is a query response
+    message = None
+    media_url = None
+    
+    # Determine message content and media
     if query_response:
         message = query_response
-        media_url = None
         
         # If a plot was generated, prepare it for MMS
         if plot_path and os.path.exists(plot_path):
-            logger.info(f"Plot file found at {plot_path}, will send as MMS")
+            logger.info(f"Plot file found at {plot_path}, will send as whatsapp mms")
             
             base_url = state.get("base_url")
             if base_url:
@@ -195,38 +169,25 @@ def generate_response(state: AgentState) -> dict:
                 logger.info(f"Generated media URL: {media_url}")
             else:
                 logger.warning("No base_url in state, cannot construct media URL for plot")
-        
-        # Send query response
-        if from_number:
-            send_success = send_whatsapp_response(from_number, message, media_url)
-            if not send_success:
-                logger.warning("Failed to send query response, but continuing workflow")
-        else:
-            logger.warning("No from_number in state, cannot send response")
-        
-        return {"response_message": message}
-    
-    # Handle energy counter reading responses
-    is_energy_counter = state.get("is_energy_counter", False)
-    bigquery_success = state.get("bigquery_success", False)
-    
-    # Format message based on success/failure
-    if is_energy_counter:
-        if bigquery_success:
+                
+    elif state.get("is_energy_counter", False):
+        if state.get("bigquery_success", False):
             extracted_date = state.get("extracted_date", "unknown")
             extracted_measurement = state.get("extracted_measurement", 0.0)
-            message = format_success_message(extracted_date, extracted_measurement)
+            message = f"✅ Energy reading registered: {extracted_measurement} kWh on {extracted_date}"
         else:
-            message = format_error_message()
+            message = "❌ Failed to register reading. Please try again."
+            
     else:
+        # Default case for non-energy counter images or other unhandled states
         message = "Sorry Currently I can only register counter images from today... More functionalities comming."
     
-    # Send WhatsApp response
-    if from_number:
-        send_success = send_whatsapp_response(from_number, message)
+    # Send WhatsApp response if we have a message and a recipient
+    if from_number and message:
+        send_success = send_whatsapp_message(from_number, message, media_url)
         if not send_success:
             logger.warning("Failed to send WhatsApp response, but continuing workflow")
-    else:
+    elif not from_number:
         logger.warning("No from_number in state, cannot send response")
     
     return {"response_message": message}

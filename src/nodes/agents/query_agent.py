@@ -14,6 +14,7 @@ from google.api_core import exceptions as google_exceptions
 from ...models import AgentState
 from ...config import settings
 from ...utils.retry import exponential_backoff_retry
+from ...services.llm_factory import get_chat_model
 from .tools.query_readings import query_readings
 from .tools.price_tool import get_electricity_price
 from .tools.plot_tool import generate_plot
@@ -84,16 +85,7 @@ def create_query_agent():
         - 7.3: Use Interactive Query Agent for text-only queries
     """
     try:
-        # Initialize ChatVertexAI with Gemini
-        # Uses Application Default Credentials automatically
-        llm = ChatVertexAI(
-            model="gemini-2.5-flash",
-            project=settings.google_cloud_project,
-            location=settings.vertex_ai_location,
-            temperature=0.3,  # Balanced between creativity and accuracy
-        )
-        
-        # Define available tools
+        llm = get_chat_model()
         tools = [
             query_readings,
             get_electricity_price,

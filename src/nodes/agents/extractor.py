@@ -13,6 +13,7 @@ from google.api_core import exceptions as google_exceptions
 from ...models import AgentState
 from ...config import settings
 from ...utils.retry import exponential_backoff_retry
+from ...services.llm_factory import get_vision_model
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -45,21 +46,9 @@ def call_gemini_vision_extraction(image_base64: str) -> MeterReading:
         google_exceptions.GoogleAPIError: If API call fails after retries
     """
     try:
-        # Initialize ChatVertexAI with Gemini Vision and structured output
-        # Uses Application Default Credentials automatically
-        llm = ChatVertexAI(
-            model="gemini-2.5-flash-lite",
-            project=settings.google_cloud_project,
-            location=settings.vertex_ai_location,
-            temperature=0.2,
-        )
-        
-        # Use structured output with Pydantic model
+        llm = get_vision_model()
         structured_llm = llm.with_structured_output(MeterReading)
-        
-        # Structured extraction prompt
         prompt = "Extract the current reading/measurement value from this energy meter."
-        
         message = HumanMessage(
             content=[
                 {"type": "text", "text": prompt},
@@ -70,25 +59,22 @@ def call_gemini_vision_extraction(image_base64: str) -> MeterReading:
                 },
             ]
         )
-        
-        # Call Gemini Vision API via LangChain with structured output
-        logger.info("Calling Vertex AI Gemini Vision API for extraction")
+        logger.info("Calling Vision model for extraction")
         result: MeterReading = structured_llm.invoke([message])
-        
         return result
     except google_exceptions.GoogleAPIError as e:
         logger.error(f"Google API error during extraction: {e}")
         raise
     except Exception as e:
-        logger.error(f"Unexpected error calling Gemini Vision API: {e}")
+        logger.error(f"Unexpected error calling Vision model: {e}")
         raise
 
 
 def extract_reading(state: AgentState) -> Dict[str, Any]:
-    """Extract measurement from energy counter image using Gemini Vision.
+    """Extract measurement from energy counter image using Vision model.
     
     This function reads the previously downloaded image and uses LangChain's 
-    ChatVertexAI with Gemini Vision to extract the measurement value.
+    ChatVertexAI with Vision model to extract the measurement value.
     The date is set to the current timestamp. After extraction, the temporary
     image file is deleted. Uses Application Default Credentials for authentication.
     Implements comprehensive error handling and retry logic for robustness.

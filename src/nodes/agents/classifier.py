@@ -12,6 +12,7 @@ from google.api_core import exceptions as google_exceptions
 from ...models import AgentState
 from ...config import settings
 from ...utils.retry import exponential_backoff_retry
+from ...services.llm_factory import get_vision_model
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -63,59 +64,6 @@ def download_and_save_image(media_url: str, message_sid: str) -> str:
         raise
 
 
-@exponential_backoff_retry(
-    max_retries=3,
-    initial_delay=1.0,
-    exceptions=(google_exceptions.GoogleAPIError, google_exceptions.RetryError)
-)
-def call_gemini_vision_classification(image_base64: str) -> str:
-    """Call Gemini Vision API for image classification with retry logic.
-    
-    Args:
-        image_base64: Base64-encoded image data
-        
-    Returns:
-        Classification response text from Gemini
-        
-    Raises:
-        google_exceptions.GoogleAPIError: If API call fails after retries
-    """
-    try:
-        # Initialize ChatVertexAI with Gemini Vision
-        # Uses Application Default Credentials automatically
-        llm = ChatVertexAI(
-            model="gemini-2.5-flash-lite",
-            project=settings.google_cloud_project,
-            location=settings.vertex_ai_location,
-            temperature=0.1,  # Deterministic responses
-        )
-        
-        # Classification prompt with image
-        prompt = "Is this an image of an energy/electricity meter or counter display? Answer yes or no."
-        
-        message = HumanMessage(
-            content=[
-                {"type": "text", "text": prompt},
-                {
-                    "type": "image",
-                    "base64": image_base64,
-                    "mime_type": "image/jpeg",
-                },
-            ]
-        )
-        
-        # Call Gemini Vision API via LangChain
-        logger.info("Calling Vertex AI Gemini Vision API for classification")
-        response = llm.invoke([message])
-        
-        return response.content.strip().lower()
-    except google_exceptions.GoogleAPIError as e:
-        logger.error(f"Google API error during classification: {e}")
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error calling Gemini Vision API: {e}")
-        raise
-
 
 def classify_image(state: AgentState) -> Dict[str, Any]:
     """Classify if the image contains an energy counter using Gemini Vision via Vertex AI.
@@ -166,8 +114,23 @@ def classify_image(state: AgentState) -> Dict[str, Any]:
             logger.error(f"Failed to read image file {image_path}: {e}")
             raise
         
-        # Call Gemini Vision API with retry logic
-        response_text = call_gemini_vision_classification(image_base64)
+        llm = get_vision_model()
+        
+        # Classification prompt with image
+        prompt = "Is this an image of an energy/electricity meter or counter display? Answer yes or no."
+        
+        message = HumanMessage(
+            content=[
+                {"type": "text", "text": prompt},
+                {
+                    "type": "image",
+                    "base64": image_base64,
+                    "mime_type": "image/jpeg",
+                },
+            ]
+        )
+        response_text = llm.invoke([message])
+        response_text = response_text.content.strip().lower()
         logger.info(f"Gemini classification response: {response_text}")
         
         # Determine if it's an energy counter

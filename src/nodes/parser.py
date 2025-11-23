@@ -58,11 +58,30 @@ def parse_message(state: AgentState) -> Dict[str, Any]:
         
         return {
             "has_image": has_image,
-            "is_query": is_query
+            "is_query": is_query,
+            # Reset transient fields to prevent state persistence across turns
+            "plot_path": None,
+            "query_response": None,
+            "bigquery_success": False,
+            "extracted_date": None,
+            "extracted_measurement": None,
+            "image_path": None,
+            "is_energy_counter": False
         }
         
     except Exception as e:
         # Non-critical error: parsing failed
         logger.error(f"Error parsing message: {e}", exc_info=True)
         logger.info("Workflow will continue with has_image=False and is_query=False")
-        return {"has_image": False, "is_query": False}
+        return {
+            "has_image": False, 
+            "is_query": False,
+            # Reset transient fields even on error
+            "plot_path": None,
+            "query_response": None,
+            "bigquery_success": False,
+            "extracted_date": None,
+            "extracted_measurement": None,
+            "image_path": None,
+            "is_energy_counter": False
+        }
