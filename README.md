@@ -1,3 +1,5 @@
+![Energy Buddy](energy_buddy.png)
+
 # Energy Budy: The Overpowered Personal Assistant
 
 > *How I used a sledgehammer to crack a nut, and learned to love the graph along the way.*
