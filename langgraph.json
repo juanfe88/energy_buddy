@@ -1,0 +1,8 @@
+{
+  "python_version": "3.11",
+  "graphs": {
+    "energy_monitor": "src.workflow:get_workflow"
+  },
+  "env": ".env",
+  "dependencies": ["."]
+}
