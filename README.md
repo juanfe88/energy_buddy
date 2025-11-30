@@ -25,6 +25,11 @@ This project, **Energy Budy**, is the result. It's a demonstration of a **Hybrid
 It's a "nice simple project" that proves you can have the best of both worlds: the reliability of code and the flexibility of agents.
 
 ---
+## Demo
+
+https://github.com/user-attachments/assets/7b4e5d7f-1b44-4e4f-a48b-90e89ae7b1b8
+
+---
 
 ## The Architecture: A Tale of Two Flows
 
@@ -157,7 +162,11 @@ If you want to run your own Energy Budy, here is the quickstart.
     ```
 
 4.  **Connect**
+
+
+
     Expose your local server (using ngrok) and hook it up to Twilio's WhatsApp Sandbox URL.
+
 
 ---
 
